@@ -19,7 +19,7 @@ package structural;
             throw
             new IllegalArgumentException("length < 0");
 
-        }
+        } 
         if (length == 0) {
             return;
         }
