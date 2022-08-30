@@ -6,7 +6,7 @@ import java.io.IOException;
 public class Driver {
 
 	public static void main(String[] args) {
-		String fileName = "./test/structural/Ex02.java";
+		String fileName = "./test/structural/Test.java";
 		File file = new File(fileName);
 		try {
 			Processing proc = new Processing(file);

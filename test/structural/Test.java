@@ -5,8 +5,10 @@ public class Test {
 		while (b != 0) {
 			if(a > b) {
 				a = a - b;
-			} else {
+			} else if (a==b){
 				b = b - a;
+			} else {
+				b = 0;
 			}
 		}
 		return a;

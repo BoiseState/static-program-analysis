@@ -6,7 +6,7 @@ import java.util.Scanner;
 
 public class Processing {
 	public static void main(String[] args) {
-		String fileName = "./test/structural/Ex02.java";
+		String fileName = "./test/structural/Ex03.java";
 		File file = new File(fileName);
 		try {
 			Scanner reader = new Scanner(file);
