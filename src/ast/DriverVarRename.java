@@ -10,15 +10,13 @@ import org.eclipse.text.edits.MalformedTreeException;
  * https://git.eclipse.org/c/jdt/eclipse.jdt.core.git/tree/org.eclipse.jdt.core/dom/org/eclipse/jdt/core/dom/ASTVisitor.java
 
  */
-public class Driver {
+public class DriverVarRename {
 
 	public static void main(String[] args) {
-		String fileName = "./test/structural/Ex02.java";
+		String fileName = "./test/structural/TestVarRename.java";
 		File file = new File(fileName);
 		try {
-//			Processing proc = new Processing(file);
-//			proc.analyze();
-			Rewriting rev = new Rewriting(file);
+			VarRename rev = new VarRename(file, "a", "c", "a", 0);
 			rev.transform();
 			
 		} catch (IOException | MalformedTreeException | BadLocationException e) {

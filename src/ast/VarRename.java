@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 import org.eclipse.jdt.core.dom.AST;
+import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.CompilationUnit;
@@ -20,14 +21,22 @@ import org.eclipse.jface.text.Document;
 import org.eclipse.text.edits.MalformedTreeException;
 import org.eclipse.text.edits.TextEdit;
 
-public class Rewriting {
+public class VarRename {
 	
 	private File file;
 	private ASTRewrite rewriter;
 	private AST ast;
+	private String s1;
+	private String s2;
+	private String mName;
+	private int bId;
 	
-	public Rewriting(File file) throws IOException {
+	public VarRename(File file, String s1, String s2, String mName, int bId) throws IOException {
 		this.file = file;
+		this.s1 = s1;
+		this.s2 = s2;
+		this.mName = mName;
+		this.bId = bId;
 	}
 	
 	
@@ -64,10 +73,10 @@ public class Rewriting {
 		
 		@Override
 		public boolean visit(MethodDeclaration node) {
-			boolean ret = true;
-			if(node.parameters().size() > 3) {
-				rewriter.remove(node, null);
-				ret = false;
+			boolean ret = false;
+			String currMethodName = node.getName().getIdentifier();
+			if(currMethodName.equals(mName)) {
+				ret = true;
 			}
 			return ret;
 		}
@@ -75,24 +84,18 @@ public class Rewriting {
 		//change simple name
 		@Override
 		public boolean visit(SimpleName node) {
-			System.out.println(node.getIdentifier());
-			
-			if(node.getIdentifier().equals("code1b")) {
+			ASTNode parent = node.getParent();
+			if(parent instanceof MethodDeclaration) {
+				return true;
+			}
+			if(node.getIdentifier().equals(s1)) {
 				System.out.println("replacing");
-				SimpleName newName = ast.newSimpleName("myVar");
+				SimpleName newName = ast.newSimpleName(s2);
 				rewriter.replace(node, newName, null);
 			}
 			return true;
 		}
 		
-		//adding use insertFirst
-		@Override
-		public void endVisit(CompilationUnit node) {
-			ImportDeclaration id = ast.newImportDeclaration();
-			id.setName(ast.newName("java.util.Set".split("\\.")));
-			ListRewrite listRewrite = rewriter.getListRewrite(node, CompilationUnit.IMPORTS_PROPERTY);
-			listRewrite.insertLast(id, null); //insertFirst(id, null);
-		}
 	}
 
 }
