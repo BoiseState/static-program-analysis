@@ -10,14 +10,11 @@
  *******************************************************************************/
 package dataflow;
 
-import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.JavaLanguage;
 import com.ibm.wala.core.util.config.AnalysisScopeReader;
 import com.ibm.wala.core.util.strings.StringStuff;
-import com.ibm.wala.core.util.warnings.Warnings;
-import com.ibm.wala.examples.util.ExampleUtil;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisCacheImpl;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
@@ -26,20 +23,18 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilder;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
-import com.ibm.wala.ipa.callgraph.CallGraphStats;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.impl.Util;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
-import com.ibm.wala.ipa.cfg.InterproceduralCFG;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.ClassHierarchyFactory;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
-import com.ibm.wala.ssa.ISSABasicBlock;
+import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.SSABinaryOpInstruction;
 import com.ibm.wala.ssa.SSAConditionalBranchInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
-import com.ibm.wala.ssa.SSAPutInstruction;
+import com.ibm.wala.ssa.SSAReturnInstruction;
 import com.ibm.wala.ssa.SymbolTable;
 import com.ibm.wala.ssa.analysis.ExplodedControlFlowGraph;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
@@ -76,7 +71,6 @@ public class ScopeFileCFG {
    */
   public static void main(String[] args) throws IOException, ClassHierarchyException, IllegalArgumentException,
       CallGraphBuilderCancelException {
-    long start = System.currentTimeMillis();
     Properties p = CommandLine.parse(args);
     String scopeFile = p.getProperty("scopeFile");
     String entryClass = p.getProperty("entryClass");
@@ -84,42 +78,45 @@ public class ScopeFileCFG {
     if (mainClass != null && entryClass != null) {
       throw new IllegalArgumentException("only specify one of mainClass or entryClass");
     }
+
     AnalysisScope scope = AnalysisScopeReader.instance.readJavaScope(scopeFile, null, ScopeFileCFG.class.getClassLoader());
     // set exclusions.  we use these exclusions as standard for handling JDK 8
     ExampleUtil.addDefaultExclusions(scope);
     IClassHierarchy cha = ClassHierarchyFactory.make(scope);
-    System.out.println(cha.getNumberOfClasses() + " classes");
-    System.out.println(Warnings.asString());
-    Warnings.clear();
     AnalysisOptions options = new AnalysisOptions();
     Iterable<Entrypoint> entrypoints = entryClass != null ? makePublicEntrypoints(cha, entryClass) : Util.makeMainEntrypoints(cha, mainClass);
     options.setEntrypoints(entrypoints);
-    options.getSSAOptions().setDefaultValues(SymbolTable::getDefaultValue);
+    //options.getSSAOptions().setDefaultValues(SymbolTable::getDefaultValue);
     for(Entrypoint e : entrypoints) {
     	System.out.println("entry " + e);
     }
+
     // you can dial down reflection handling if you like
 //    options.setReflectionOptions(ReflectionOptions.NONE);
-    AnalysisCache cache = new AnalysisCacheImpl();
+    AnalysisCache cache = new AnalysisCacheImpl(options.getSSAOptions());
+   
+    
     // other builders can be constructed with different Util methods
-    CallGraphBuilder<InstanceKey> builder = Util.makeZeroCFABuilder(new JavaLanguage(), options, cache, cha);//Util.makeZeroOneContainerCFABuilder(options, cache, cha);
-//    CallGraphBuilder builder = Util.makeNCFABuilder(2, options, cache, cha, scope);
-//    CallGraphBuilder builder = Util.makeVanillaNCFABuilder(2, options, cache, cha, scope);
+    CallGraphBuilder<InstanceKey> builder = Util.makeZeroCFABuilder(new JavaLanguage(), options, cache, cha);
     System.out.println("building call graph...");
     CallGraph cg = builder.makeCallGraph(options, null);
-    long end = System.currentTimeMillis();
-    System.out.println("done");
-    System.out.println("took " + (end-start) + "ms");
-    System.out.println("entry noted in CG " + cg.getEntrypointNodes());
+ 
+    //find the main method -- could be parametrized by the method name
     CGNode mainEntry = null;
     for(CGNode n : cg.getEntrypointNodes()) {
-    	if(n.toString().contains(" main([Ljava/lang/String;)V"));
+    	if(n.toString().contains("main(II)I"));
     	mainEntry = n;
     }
     System.out.println("Main Entry point is " + mainEntry);
     
     
-    ExplodedControlFlowGraph eCFG = ExplodedControlFlowGraph.make(mainEntry.getIR());
+    IMethod myM = mainEntry.getMethod();
+    
+    IR mIR = cache.getIR(myM);
+    
+    SymbolTable symbT = mIR.getSymbolTable();
+    
+    ExplodedControlFlowGraph eCFG = ExplodedControlFlowGraph.make(mIR);
     
     IExplodedBasicBlock entry = eCFG.entry();
     System.out.println(entry);
@@ -128,81 +125,54 @@ public class ScopeFileCFG {
     List<IExplodedBasicBlock> q = new ArrayList<IExplodedBasicBlock>();
     q.add(entry);
     Set<IExplodedBasicBlock> seen = new HashSet<IExplodedBasicBlock>();
+    
     while(!q.isEmpty()) {
     	IExplodedBasicBlock curr = q.remove(0);
     	System.out.println("Curr " + curr);
     	SSAInstruction instr = curr.getInstruction();
-    	System.out.println("I " + instr + (instr!=null?instr.getClass():""));
+    	if(instr != null) {
+    		System.out.println("I " + instr);
+    	}
     	if( instr instanceof SSAConditionalBranchInstruction) {
     		System.out.println("\t\t\t Branch!");
     		SSAConditionalBranchInstruction condInstr = (SSAConditionalBranchInstruction) instr;
-    		System.out.println(condInstr.getUse(0)); 
-    		System.out.println(condInstr.getUse(1)); 
+    		System.out.println(condInstr.getUse(0) + " " + symbT.getValueString(condInstr.getUse(0))); 
+    		System.out.println(condInstr.getUse(1) + " " + symbT.getValueString(condInstr.getUse(1))); 
     	}
     	if( instr instanceof SSABinaryOpInstruction) {
     		System.out.println("\t\t\t Assignment!");
     		SSABinaryOpInstruction binopInstr = (SSABinaryOpInstruction)instr;
-    		System.out.println(binopInstr.getDef());
-    		System.out.println(binopInstr.getUse(0));
-    		System.out.println(binopInstr.getUse(1));
+    		System.out.println(binopInstr.getDef() + " " + symbT.getValueString(binopInstr.getDef()));
+    		System.out.println(binopInstr.getUse(0) + " " + symbT.getValueString(binopInstr.getUse(0)));
+    		System.out.println(binopInstr.getUse(1) + " " + symbT.getValueString(binopInstr.getUse(1)));
     		//System.out.println(binopInstr.getOperator());
+    	}
+    	
+    	if(instr instanceof SSAReturnInstruction) {
+    		System.out.println("\t\t\t Return!");
+    		SSAReturnInstruction retInstr = (SSAReturnInstruction) instr;
+    		System.out.println(retInstr.getResult() + " " + symbT.getValueString(retInstr.getResult()));
     	}
     	Iterator<IExplodedBasicBlock> iterSucc = eCFG.getSuccNodes(curr);
     	while(iterSucc.hasNext()) {
     		IExplodedBasicBlock succ = iterSucc.next();
-    		System.out.println("Succ " + succ);
-    		System.out.println("S " + succ.getInstruction()+"\n");
+//    		System.out.println("Succ " + succ);
+//    		System.out.println("S " + succ.getInstruction()+"\n");
     		if(!seen.contains(succ)) {
     			q.add(succ);
+    			seen.add(succ);
     		}
     		
     	}
     }
     
-    
-    /*
-    
-    InterproceduralCFG cfg = new InterproceduralCFG(cg);
-    ControlFlowGraph<SSAInstruction, ISSABasicBlock> slice = cfg.getCFG(mainEntry);
-    
-    System.out.println(slice);
-  //BFS
-    List<ISSABasicBlock> q = new ArrayList<ISSABasicBlock>();
-    System.out.println(slice.entry());
-    //TODO: add to the queue
-    q.add(slice.entry());
-    
-    Set<ISSABasicBlock> seen = new HashSet<ISSABasicBlock>();
-    while(!q.isEmpty()) {
-    	ISSABasicBlock curr = q.remove(0);
-    	System.out.println(curr);
-    	Iterator<SSAInstruction> instIter = curr.iterator();
-		while(instIter.hasNext()) {
-			System.out.println("I " + instIter.next());
-		}
-    	seen.add(curr);
-    
-    	Iterator<ISSABasicBlock> iter = slice.getSuccNodes(curr);
-    	while(iter.hasNext()) {
-    		ISSABasicBlock succ = iter.next();
-    		
-    		System.out.println("succ " + succ);
-    		if(!seen.contains(succ)) {
-    			q.add(succ);
-    		}
-    	}
-    } 
-    
-    
-    
-    System.out.println(CallGraphStats.getStats(cg));
-    */
   }
 
   private static Iterable<Entrypoint> makePublicEntrypoints(IClassHierarchy cha, String entryClass) {
     Collection<Entrypoint> result = new ArrayList<>();
     IClass klass = cha.lookupClass(TypeReference.findOrCreate(ClassLoaderReference.Application,
         StringStuff.deployment2CanonicalTypeString(entryClass)));
+    System.out.println("klass " + klass);
     for (IMethod m : klass.getDeclaredMethods()) {
       if (m.isPublic()) {
         result.add(new DefaultEntrypoint(m, cha));
