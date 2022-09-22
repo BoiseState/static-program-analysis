@@ -20,7 +20,7 @@ import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.io.CommandLine;
 
-public class IntroprocRechingDefsDriver {
+public class IntraprocRechingDefsDriver {
 
 	public static void main(String[] args) throws IOException, ClassHierarchyException {
 		
