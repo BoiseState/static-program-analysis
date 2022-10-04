@@ -21,6 +21,7 @@ import com.ibm.wala.ipa.callgraph.CallGraphStats;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.Util;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
+import com.ibm.wala.ipa.cfg.ExplodedInterproceduralCFG;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.ClassHierarchyFactory;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
@@ -78,11 +79,15 @@ public class CSReachingDefsDriver {
 	    long end = System.currentTimeMillis();
 	    System.out.println("done");
 	    System.out.println("took " + (end-start) + "ms");
-	    System.out.println(CallGraphStats.getStats(cg));
+	    System.out.println(CallGraphStats.getStats(cg)); 
 	    
-	    ContextSensitiveReachingDefs reachingDefs = new ContextSensitiveReachingDefs(cg, cache);
-	    TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<CGNode, Integer>> result = reachingDefs.analyze();
-	    ISupergraph<BasicBlockInContext<IExplodedBasicBlock>, CGNode> supergraph = reachingDefs.getSupergraph();
+//	    ContextSensitiveReachingDefs reachingDefs = new ContextSensitiveReachingDefs(cg, cache);
+//	    TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<CGNode, Integer>> result = reachingDefs.analyze();
+//	    ISupergraph<BasicBlockInContext<IExplodedBasicBlock>, CGNode> supergraph = reachingDefs.getSupergraph();
+//	    
+	    ExplodedInterproceduralCFG icfg = ExplodedInterproceduralCFG.make(cg);
+	    ContextInsensitiveReachingDefs reachingDefsIns = new ContextInsensitiveReachingDefs(icfg, cha);
+	    reachingDefsIns.analyze();
 
 	    // TODO print out some analysis results
 	}

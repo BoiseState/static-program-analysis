@@ -4,7 +4,7 @@ public class HelloWorldFields {
 	private static int x;
 	private static int y;
 
-	public int  main() {
+	public static void main(String[] args) {
 		x = x + 1;
 		if(x < y) {
 			x = x * 2;
@@ -12,8 +12,6 @@ public class HelloWorldFields {
 		}
 		//System.out.println("x " + x);
 		x = y - 2;
-		return x;
-
 	}
 
 }

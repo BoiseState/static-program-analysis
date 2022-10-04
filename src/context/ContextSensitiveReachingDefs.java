@@ -294,6 +294,7 @@ private class ReachingDefsDomain extends MutableMapping<Pair<CGNode, Integer>> i
       // this shouldn't happen 
       assert false;
     }
+    
     return result;
 
   }

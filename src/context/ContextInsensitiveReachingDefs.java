@@ -193,10 +193,13 @@ public class ContextInsensitiveReachingDefs {
     }
     if (VERBOSE) {
       for (BasicBlockInContext<IExplodedBasicBlock> ebb : icfg) {
-        System.out.println(ebb);
-        System.out.println(ebb.getDelegate().getInstruction());
-        System.out.println(solver.getIn(ebb));
-        System.out.println(solver.getOut(ebb));
+        SSAInstruction stmt = ebb.getDelegate().getInstruction();
+        if(stmt != null) {
+        	System.out.println(ebb);
+        	System.out.println(stmt);
+        	System.out.println("IN " + solver.getIn(ebb));
+        	System.out.println("OUT " + solver.getOut(ebb));
+        }
       }
     }
     return solver;

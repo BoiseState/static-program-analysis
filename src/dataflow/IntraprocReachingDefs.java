@@ -92,8 +92,11 @@ public class IntraprocReachingDefs {
         assert field != null;
         BitVector bv = staticField2DefStatements.get(field);
         if (bv == null) {
+        	System.out.println("new bv for " + field);
           bv = new BitVector();
           staticField2DefStatements.put(field, bv);
+        } else {
+        	System.out.println("bv exists for " + field);
         }
         bv.set(instrNum);
       }
