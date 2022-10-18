@@ -34,6 +34,7 @@ import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.SSABinaryOpInstruction;
 import com.ibm.wala.ssa.SSAConditionalBranchInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.ssa.SSAReturnInstruction;
 import com.ibm.wala.ssa.SymbolTable;
 import com.ibm.wala.ssa.analysis.ExplodedControlFlowGraph;
@@ -132,7 +133,14 @@ public class ScopeFileCFG {
     	SSAInstruction instr = curr.getInstruction();
     	if(instr != null) {
     		System.out.println("I " + instr);
+    	} 
+    	Iterator<SSAPhiInstruction> phies = curr.iteratePhis();
+    	while(phies.hasNext()) {
+    		SSAPhiInstruction phi = phies.next();
+    		System.out.println("\t Phi!");
+    		System.out.println(phi);
     	}
+   
     	if( instr instanceof SSAConditionalBranchInstruction) {
     		System.out.println("\t\t\t Branch!");
     		SSAConditionalBranchInstruction condInstr = (SSAConditionalBranchInstruction) instr;
